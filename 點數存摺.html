@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>🏰 501班 點數冒險公會</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:'Baloo 2','Microsoft JhengHei',sans-serif;
+  background: url("background.jpg.jpg") no-repeat center center fixed;
+  background-size:cover;
+}
+
+.overlay{
+  background:rgba(0,0,0,0.3);
+  min-height:100vh;
+  padding:30px;
+}
+
+.title{
+  text-align:center;
+  color:#ffd700;
+  font-size:40px;
+  text-shadow:3px 3px 6px #000;
+}
+
+.card{
+  background: rgba(245,230,200,0.7); /* 0.7 = 70% 不透明 */
+  border:6px solid #8b5a2b;
+  border-radius:20px;
+  box-shadow:0 0 25px rgba(0,0,0,0.5);
+  padding:20px;
+  max-width:1000px;
+  margin:20px auto;
+}
+
+.students{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:15px;
+}
+
+.btn{
+  background:linear-gradient(#ffd700,#e6b800);
+  border:4px solid #8b5a2b;
+  padding:10px;
+  border-radius:15px;
+  font-size:16px;
+  cursor:pointer;
+  box-shadow:0 5px 0 #5c3a1a;
+}
+
+.input-btn{
+  background: linear-gradient(#ffd700,#e6b800); /* RPG 捲軸漸層 */
+  border:4px solid #8b5a2b; /* 邊框 */
+  padding:8px 12px;          /* 內距 */
+  border-radius:15px;        /* 圓角 */
+  font-size:16px;            /* 文字大小 */
+  box-shadow:0 5px 0 #5c3a1a;/* 陰影 */
+  color:#000;
+  text-align:center;
+  cursor:text;               /* 游標變文字游標 */
+  width:150px;               /* 欄位寬度 */
+  display:inline-block;
+  margin:5px;
+}
+
+.input-btn:focus{
+  outline:none;
+  background: linear-gradient(#fff176,#ffeb3b); /* 選取時顏色變亮 */
+}
+
+#reasonInput{
+  display:none; /* 預設隱藏，選「其他」才顯示 */
+}
+
+.btn:active{
+  transform:translateY(4px);
+  box-shadow:0 1px 0 #5c3a1a;
+}
+
+.deposit{ color:green; }
+.spend{ color:red; }
+
+.log{
+  max-height:250px;
+  overflow:auto;
+  background:white;
+  padding:10px;
+  border-radius:10px;
+}
+
+.rank-item{
+  background:white;
+  padding:8px;
+  margin:5px 0;
+  border-radius:8px;
+}
+
+/* 新增：等級顏色（不影響原本樣式） */
+.lv1{color:gray;}
+.lv2{color:green;}
+.lv3{color:blue;}
+.lv4{color:purple;}
+.lv5{color:#e37d00;}
+.lv6{color:red;}
+.lv7 { color: gold; font-weight: bold; }
+
+/* ===== 進度條 ===== */
+
+.progress-box{
+width:100%;
+height:20px;
+background:#ddd;
+border-radius:10px;
+overflow:hidden;
+margin:10px 0;
+}
+
+#progress-bar{
+height:100%;
+width:0%;
+background:linear-gradient(90deg,#00c853,#69f0ae);
+transition:width 0.6s;
+}
+
+#nextLevelText{
+font-size:14px;
+color:#333;
+margin-bottom:10px;
+}
+
+
+/* ===== 升級動畫 ===== */
+
+#levelUpEffect{
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+font-size:90px;          /* 字變更大 */
+font-weight:900;         /* 超粗 */
+letter-spacing:6px;      /* 字距 */
+color:gold;
+text-shadow:
+0 0 10px #fff,
+0 0 20px #fff,
+0 0 40px gold,
+0 0 80px gold;
+display:none;
+animation:levelup 1.5s ease-out;
+}
+
+@keyframes levelup{
+0%{transform:translate(-50%,-50%) scale(0.3);opacity:0;}
+50%{transform:translate(-50%,-50%) scale(1.4);}
+100%{transform:translate(-50%,-50%) scale(1);opacity:1;}
+}
+</style>
+</head>
+
+<body>
+<div class="overlay">
+<div id="levelUpEffect">LEVEL UP!</div>
+
+<div class="title">🏰 501班 點數冒險公會</div>
+
+<div id="home" class="card">
+  <h2>📜 選擇冒險者</h2>
+  <div class="students" id="studentList"></div>
+  <br>
+  <button class="btn" onclick="openTeacher()">🧙‍♂️ 老師模式</button>
+</div>
+
+<div id="account" class="card" style="display:none;">
+  <h2 id="studentName"></h2>
+  <h3>✨ 等級：<span id="level"></span></h3>
+  <h3>💰 點數：<span id="points"></span></h3>
+<div class="progress-box">
+  <div id="progress-bar"></div>
+</div>
+
+<div id="nextLevelText"></div>
+
+  <!-- 存入/支出區 -->
+  <select id="typeSelect" class="input-btn">
+  <option value="">收入 / 支出</option>
+  <option value="deposit">收入</option>
+  <option value="spend">支出</option>
+</select>
+
+<select id="reasonSelect" class="input-btn">
+  <option value="">原因</option>
+  <option value="生活表現">生活表現</option>
+  <option value="團隊合作">團隊合作</option>
+  <option value="小日記">小日記</option>
+  <option value="國語作業">國語作業</option>
+  <option value="數學作業">數學作業</option>
+  <option value="開放式作業">開放式作業</option>
+  <option value="其他">其他</option>
+</select>
+
+  <input type="number" id="amountInput" placeholder="點數" class="input-btn">
+
+  <input type="text" id="reasonInput" placeholder="請輸入原因" class="input-btn" style="display:none;">
+
+  <button class="btn" onclick="addRecord()">確認</button>
+  <button class="btn" onclick="goHome()">返回</button>
+
+  <div class="log" id="log"></div>
+</div>
+
+<div id="teacher" class="card" style="display:none;">
+  <h2>🧙‍♂️ 老師模式</h2>
+
+  <button class="btn" onclick="showRanking()">🏆 全班排行榜</button>
+  <button class="btn" onclick="showBatch()">➕ 批次加分</button>
+  <button class="btn" onclick="exportCSV()">📊 匯出 Excel</button>
+  <button class="btn" onclick="clearAll()">🗑 清除全部資料</button>
+  <button class="btn" onclick="goHome()">返回</button>
+
+  <div id="teacherContent"></div>
+</div>
+
+</div>
+
+<script>
+const students=[
+"01 林駿瑋","02 吳昭佑","03 鄭頎安","04 蔡名尊","05 蔡秉祐",
+"06 吳宥寯","07 陳杰稐","08 楊宥廷","09 林楷芠","10 陳杰豊",
+"11 張躍群","12 吳子明","13 莊喬安","14 張語桐","15 吳映蓉",
+"16 林渟媗","17 林栩荷","18 周芷涵","19 林葙婕","20 林畇竹",
+"21 蕭俞婷","22 邱楷豫","23 張秝榳"
+];
+
+let currentStudent="";
+
+const list=document.getElementById("studentList");
+students.forEach(s=>{
+  const btn=document.createElement("button");
+  btn.className="btn";
+  btn.innerText=s;
+  btn.onclick=()=>openAccount(s);
+  list.appendChild(btn);
+
+  if(!localStorage.getItem(s)){
+    localStorage.setItem(s,JSON.stringify({points:0,records:[]}));
+  }
+});
+
+/* 等級計算 */
+/* 等級計算（新） */
+const levelThresholds = [0, 30, 60, 90, 120, 160, 200]; // 每級起始分數
+const levelTexts = [
+  "Lv.1 新手",
+  "Lv.2 學徒",
+  "Lv.3 精銳",
+  "Lv.4 專家",
+  "Lv.5 專家級的專家",
+  "Lv.6 根本就是大師級",
+  "Lv.MAX 超級超級傳說級"
+];
+
+// 計算等級數字
+function getLevelNumber(points){
+  for(let i = levelThresholds.length - 1; i >= 0; i--){
+    if(points >= levelThresholds[i]){
+      return i + 1; // Lv1 = 1, Lv2 = 2 ...
+    }
+  }
+  return 1;
+}
+
+// 顯示等級文字
+function getLevelText(points){
+  const lv = getLevelNumber(points);
+  return levelTexts[lv - 1];
+}
+
+function openAccount(name){
+  currentStudent=name;
+  document.getElementById("home").style.display="none";
+  document.getElementById("account").style.display="block";
+  document.getElementById("studentName").innerText=name;
+  loadData();
+}
+
+function loadData(){
+
+  const data=JSON.parse(localStorage.getItem(currentStudent));
+  const points=data.points;
+
+  document.getElementById("points").innerText=points;
+
+  const lv=getLevelNumber(points);
+  document.getElementById("level").innerHTML=`<span class="lv${lv}">${getLevelText(points)}</span>`;
+
+  /* ===== 進度條 ===== */
+
+const currentLevelStart = levelThresholds[lv - 1];
+const nextLevelPoint = (lv < levelThresholds.length) ? levelThresholds[lv] : currentLevelStart; // LvMax 以上
+const progress = Math.min(100, (points - currentLevelStart) / (nextLevelPoint - currentLevelStart) * 100);
+document.getElementById("progress-bar").style.width = progress + "%";
+
+const remain = nextLevelPoint - points;
+document.getElementById("nextLevelText").innerText =
+  (lv < levelThresholds.length) ? `距離下一級還差 ${remain} 分` : "已達最高等級";
+
+  if(lv<7){
+    document.getElementById("nextLevelText").innerText=
+    `距離下一級還差 ${remain} 分`;
+  }else{
+    document.getElementById("nextLevelText").innerText=
+    "已達最高等級";
+  }
+
+  /* ===== 紀錄 ===== */
+
+  const log=document.getElementById("log");
+  log.innerHTML="";
+
+  data.records.forEach((r,i)=>{
+    const div=document.createElement("div");
+    div.className=r.type;
+
+    div.innerHTML=
+    `${r.date} | ${r.reason} | ${(r.type=="deposit"?"+":"-")+r.amount}
+    <button onclick="deleteRecord(${i})">❌</button>`;
+
+    log.appendChild(div);
+  });
+
+}
+
+function deleteRecord(index){
+  const data=JSON.parse(localStorage.getItem(currentStudent));
+  const r=data.records[index];
+  data.points -= (r.type=="deposit"?r.amount:-r.amount);
+  data.records.splice(index,1);
+  localStorage.setItem(currentStudent,JSON.stringify(data));
+  loadData();
+}
+
+function openTeacher(){
+  document.getElementById("home").style.display="none";
+  document.getElementById("teacher").style.display="block";
+}
+
+/* 排行榜（新增等級顏色） */
+function showRanking(){
+  const content = document.getElementById("teacherContent");
+  content.innerHTML = "<h3>🏆 排行榜</h3>";
+
+  let arr = students.map(s => {
+    let data = JSON.parse(localStorage.getItem(s));
+    return {name: s, points: data.points};
+  });
+
+  arr.sort((a,b) => b.points - a.points);
+
+  arr.forEach((s,i) => {
+    let lv = getLevelNumber(s.points);
+    let rankDisplay = (i < 3) ? "🏆" : "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"; // 前三名顯示獎盃，其餘用空格對齊
+
+    content.innerHTML += `
+      <div class="rank-item">
+        ${rankDisplay} ${s.name}&nbsp;&nbsp;&nbsp;<span class="lv${lv}" style="font-weight:bold;">${getLevelText(s.points)}</span> &nbsp; ${s.points} 分
+      </div>`;
+  });
+}
+
+/* 批次加分 */
+function showBatch(){
+
+  const content=document.getElementById("teacherContent");
+
+  content.innerHTML=`
+  <h3>➕ 批次加分</h3>
+
+  <input type="number" id="batchPoint" placeholder="加幾分" class="input-btn">
+
+  <select id="batchReasonSelect" class="input-btn" onchange="toggleBatchOtherReason()">
+    <option value="">原因</option>
+    <option value="生活表現">生活表現</option>
+    <option value="團隊合作">團隊合作</option>
+    <option value="課堂加分">課堂加分</option>
+    <option value="小日記">小日記</option>
+    <option value="國語作業">國語作業</option>
+    <option value="數學作業">數學作業</option>
+    <option value="開放式作業">開放式作業</option>
+    <option value="其他">其他</option>
+  </select>
+
+  <input type="text" id="batchOtherReason" placeholder="請輸入原因" class="input-btn" style="display:none">
+
+  <br><br>
+
+  <button class="btn" onclick="selectAllStudents()">✅ 全選</button>
+  <button class="btn" onclick="unselectAllStudents()">❌ 取消全選</button>
+
+  <br><br>
+  `;
+
+  students.forEach(s=>{
+    content.innerHTML+=`
+    <label>
+      <input type="checkbox" value="${s}" class="batchStudent">
+      ${s}
+    </label><br>`;
+  });
+
+  content.innerHTML+=`
+  <br>
+  <button class="btn" onclick="batchAdd()">確定加分</button>
+  `;
+}
+
+function toggleBatchOtherReason(){
+  const select=document.getElementById("batchReasonSelect");
+  const other=document.getElementById("batchOtherReason");
+  if(select.value==="其他"){
+    other.style.display="inline-block";
+  }else{
+    other.style.display="none";
+  }
+}
+
+function batchAdd(){
+  const p = parseInt(document.getElementById("batchPoint").value);
+
+  // 下拉選單 + 其他輸入框
+  let reason = document.getElementById("batchReasonSelect").value;
+  if(reason==="其他"){
+    reason = document.getElementById("batchOtherReason").value;
+  }
+
+  if(!p || !reason){
+    alert("請填寫分數與原因");
+    return;
+  }
+
+  const checked = document.querySelectorAll(".batchStudent:checked");
+  checked.forEach(box=>{
+    const name = box.value;
+    const data = JSON.parse(localStorage.getItem(name));
+    data.points += p;
+    data.records.unshift({type:"deposit", amount:p, reason:reason, date:new Date().toLocaleDateString()});
+    localStorage.setItem(name,JSON.stringify(data));
+  });
+
+  alert("批次加分完成");
+}
+
+function selectAllStudents(){
+  document.querySelectorAll(".batchStudent").forEach(box=>{
+    box.checked = true;
+  });
+}
+
+function unselectAllStudents(){
+  document.querySelectorAll(".batchStudent").forEach(box=>{
+    box.checked = false;
+  });
+}
+
+function toggleOtherReason(){
+  const select=document.getElementById("reasonSelect");
+  const other=document.getElementById("otherReason");
+  if(select.value==="其他"){
+    other.style.display="inline-block";
+  }else{
+    other.style.display="none";
+  }
+}
+
+function exportCSV(){
+  let csv="姓名,點數,等級\n";
+  students.forEach(s=>{
+    let data=JSON.parse(localStorage.getItem(s));
+    csv+=`${s},${data.points},${getLevelText(data.points)}\n`;
+  });
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const link=document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download="501班點數統計.csv";
+  link.click();
+}
+
+function clearAll(){
+  if(confirm("確定清除全部資料？")){
+    students.forEach(s=>{
+      localStorage.setItem(s,JSON.stringify({points:0,records:[]}));
+    });
+    alert("已清除");
+  }
+}
+
+function goHome(){
+  document.getElementById("account").style.display="none";
+  document.getElementById("teacher").style.display="none";
+  document.getElementById("home").style.display="block";
+}
+
+const reasonSelect = document.getElementById("reasonSelect");
+const reasonInput = document.getElementById("reasonInput");
+
+reasonSelect.addEventListener("change", function(){
+
+  if(this.value === "其他"){
+    reasonInput.style.display = "inline-block";
+    reasonInput.placeholder = "請輸入原因";
+    reasonInput.value = "";
+  }else{
+    reasonInput.style.display = "none";
+    reasonInput.value = "";
+  }
+
+});
+
+function addRecord(){
+
+  const type = document.getElementById("typeSelect").value;
+  const amount = parseInt(document.getElementById("amountInput").value);
+  let reason = document.getElementById("reasonSelect").value;
+
+  if(reason==="其他"){
+    reason = document.getElementById("reasonInput").value;
+  }
+
+  if(!type) return alert("請選擇收入或支出");
+  if(!amount) return alert("請輸入點數");
+  if(!reason) return alert("請填寫原因");
+
+  const data = JSON.parse(localStorage.getItem(currentStudent));
+
+  const oldLevel=getLevelNumber(data.points);
+
+  if(type==="deposit"){
+    data.points += amount;
+  }else{
+    data.points -= amount;
+  }
+
+  const newLevel=getLevelNumber(data.points);
+
+  data.records.unshift({
+    type:type,
+    amount:amount,
+    reason:reason,
+    date:new Date().toLocaleDateString()
+  });
+
+  localStorage.setItem(currentStudent,JSON.stringify(data));
+
+  loadData();
+
+  /* ===== 升級動畫 ===== */
+
+  if(newLevel>oldLevel){
+
+    const effect=document.getElementById("levelUpEffect");
+
+    effect.style.display="block";
+
+    setTimeout(()=>{
+      effect.style.display="none";
+    },1500);
+
+    playLevelUpSound();
+  }
+
+}
+
+function playLevelUpSound(){
+
+  const audio=new Audio("yisell_sound_2014042816103441995_88366.mp3");
+
+  audio.play();
+
+}
+
+</script>
+
+</body>
+</html>
